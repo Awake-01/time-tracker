@@ -1,5 +1,3 @@
-# Link: https://awake-01.github.io/time-tracker
-
 一款简单的时间记录与统计工具，帮助你记录生活中的某些时刻，并提供数据统计和管理功能。
 
 ### 功能特点
