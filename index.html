@@ -590,6 +590,57 @@
             }
         };
 
+        const BackupReminder = {
+            REMINDER_INTERVAL_DAYS: 30,
+
+            check() {
+                const lastBackup = localStorage.getItem('last-backup-date');
+                const now = new Date();
+
+                if (!lastBackup) {
+                    // First time using the app
+                    this.setLastBackupDate();
+                    return;
+                }
+
+                const lastBackupDate = new Date(lastBackup);
+                const diffTime = Math.abs(now - lastBackupDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays >= this.REMINDER_INTERVAL_DAYS) {
+                    this.showReminder();
+                }
+            },
+            showReminder() {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-50 flex items-center justify-center modal-backdrop';
+                modal.innerHTML = `
+                    <div class="modal-content bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
+                        <h2 class="text-2xl font-bold mb-4">备份提醒</h2>
+                        <p class="mb-4">距离您上次备份数据已经超过 30 天了，为了防止数据丢失，建议您立即备份。</p>
+                        <div class="mt-6 flex justify-end gap-4">
+                            <button id="remind-later-btn" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">稍后提醒</button>
+                            <button id="backup-now-btn" class="btn px-4 py-2 rounded">立即备份</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.getElementById('remind-later-btn').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                });
+
+                document.getElementById('backup-now-btn').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                    DataManager.exportData();
+                    this.setLastBackupDate();
+                });
+            },
+            setLastBackupDate() {
+                localStorage.setItem('last-backup-date', new Date().toISOString());
+            }
+        };
+
         const App = {
             recordBtn: document.getElementById('record-btn'),
             modal: Modal,
@@ -602,6 +653,7 @@
                 TabManager.init();
                 Stats.init();
                 DataManager.init();
+                BackupReminder.check();
 
                 this.recordBtn.addEventListener('click', () => this.handleRecordClick());
                 this.skipBtn.addEventListener('click', () => this.handleSkip());
