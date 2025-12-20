@@ -135,6 +135,11 @@
                                 <i data-lucide="bar-chart-3" class="inline-block w-5 h-5 mr-2"></i>统计
                             </button>
                         </li>
+                         <li class="mr-2" role="presentation">
+                            <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 dark:hover:text-gray-300" id="data-tab" data-tab="data" type="button" role="tab" aria-controls="data" aria-selected="false">
+                                <i data-lucide="database" class="inline-block w-5 h-5 mr-2"></i>数据管理
+                            </button>
+                        </li>
                     </ul>
                 </nav>
             </div>
@@ -172,6 +177,18 @@
                                 <div id="tree-view" class="tree-view"></div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="data" class="tab-content hidden">
+                    <div class="card p-6">
+                        <h2 class="text-xl font-semibold mb-4">数据管理</h2>
+                        <div class="mb-4">
+                            <label for="file-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">选择 JSON 文件</label>
+                            <input type="file" id="file-input" accept=".json" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-color file:text-white hover:file:bg-indigo-700">
+                        </div>
+                        <button id="import-btn" class="btn px-4 py-2 rounded">从文件导入数据</button>
+                        <button id="export-btn" class="btn px-4 py-2 rounded ml-4">导出数据到文件</button>
                     </div>
                 </div>
             </div>
@@ -313,6 +330,73 @@
             }
         };
 
+        const DataManager = {
+            importBtn: document.getElementById('import-btn'),
+            exportBtn: document.getElementById('export-btn'),
+            fileInput: document.getElementById('file-input'),
+
+            init() {
+                this.importBtn.addEventListener('click', () => this.importData());
+                this.exportBtn.addEventListener('click', () => this.exportData());
+            },
+            importData() {
+                const file = this.fileInput.files[0];
+                if (!file) {
+                    Toast.show('请选择一个文件');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedRecords = JSON.parse(e.target.result);
+                        if (!Array.isArray(importedRecords)) {
+                            throw new Error('Invalid data format');
+                        }
+                        
+                        const currentRecords = RecordManager.getRecords();
+                        const mergedRecords = [...currentRecords, ...importedRecords];
+                        
+                        // Deduplicate based on ID
+                        const uniqueRecords = mergedRecords.reduce((acc, record) => {
+                            const existingRecord = acc.find(r => r.id === record.id);
+                            if (!existingRecord) {
+                                acc.push(record);
+                            }
+                            return acc;
+                        }, []);
+
+                        RecordManager.records = uniqueRecords;
+                        Storage.saveRecords(uniqueRecords);
+                        
+                        Toast.show(`成功导入 ${importedRecords.length} 条记录`);
+                        
+                        // Refresh stats if on stats tab
+                        if (document.getElementById('stats-tab').classList.contains('tab-active')) {
+                            Stats.update();
+                        }
+                    } catch (error) {
+                        Toast.show('导入失败，请检查文件格式');
+                        console.error('Import error:', error);
+                    }
+                };
+                reader.readAsText(file);
+                 this.fileInput.value = ''; // Clear the input
+            },
+            exportData() {
+                const records = RecordManager.getRecords();
+                const dataStr = JSON.stringify(records, null, 2);
+                const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
+                
+                const exportFileDefaultName = `time-records-${new Date().toISOString().split('T')[0]}.json`;
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+            }
+        };
+
         const Stats = {
             dimensionSelect: document.getElementById('dimension-select'),
             totalCountElement: document.getElementById('total-count'),
@@ -431,6 +515,7 @@
                 Theme.init();
                 TabManager.init();
                 Stats.init();
+                DataManager.init();
 
                 this.recordBtn.addEventListener('click', () => this.handleRecordClick());
                 this.skipBtn.addEventListener('click', () => this.handleSkip());
