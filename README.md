@@ -1,1 +1,1 @@
-# time-tracker: link: https://awake-01.github.io/time-tracker
+# time-tracker: https://awake-01.github.io/time-tracker
