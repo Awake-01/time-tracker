@@ -190,6 +190,24 @@
                         <button id="import-btn" class="btn px-4 py-2 rounded">从文件导入数据</button>
                         <button id="export-btn" class="btn px-4 py-2 rounded ml-4">导出数据到文件</button>
                     </div>
+                    
+                    <div class="card p-6 mt-6">
+                        <h2 class="text-xl font-semibold mb-4">本地记录</h2>
+                        <div class="overflow-x-auto">
+                            <table id="records-table" class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3">时间</th>
+                                        <th scope="col" class="px-6 py-3">备注</th>
+                                        <th scope="col" class="px-6 py-3">管理</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="records-table-body">
+                                    <!-- Records will be dynamically inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -334,10 +352,74 @@
             importBtn: document.getElementById('import-btn'),
             exportBtn: document.getElementById('export-btn'),
             fileInput: document.getElementById('file-input'),
+            recordsTableBody: document.getElementById('records-table-body'),
 
             init() {
                 this.importBtn.addEventListener('click', () => this.importData());
                 this.exportBtn.addEventListener('click', () => this.exportData());
+                TabManager.tabs.forEach(tab => {
+                    if (tab.dataset.tab === 'data') {
+                        tab.addEventListener('click', () => this.renderRecords());
+                    }
+                });
+            },
+            renderRecords() {
+                this.recordsTableBody.innerHTML = '';
+                const records = RecordManager.getRecords().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort by newest first
+
+                records.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700';
+
+                    const date = new Date(record.timestamp);
+                    const formattedDate = date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4">${formattedDate}</td>
+                        <td class="px-6 py-4">${record.note || '-'}</td>
+                        <td class="px-6 py-4">
+                            <button class="edit-btn text-blue-600 hover:text-blue-900 mr-4" data-id="${record.id}">编辑</button>
+                            <button class="delete-btn text-red-600 hover:text-red-900" data-id="${record.id}">删除</button>
+                        </td>
+                    `;
+
+                    this.recordsTableBody.appendChild(row);
+                });
+
+                // Add event listeners for new buttons
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.editRecord(e.target.dataset.id));
+                });
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.deleteRecord(e.target.dataset.id));
+                });
+            },
+            editRecord(recordId) {
+                const record = RecordManager.records.find(r => r.id === recordId);
+                if (!record) return;
+
+                const newNote = prompt('请输入新的备注:', record.note);
+                if (newNote !== null) { // User clicked OK, not Cancel
+                    record.note = newNote.trim();
+                    Storage.saveRecords(RecordManager.records);
+                    this.renderRecords();
+                    Toast.show('记录已更新');
+                }
+            },
+            deleteRecord(recordId) {
+                if (confirm('确定要删除这条记录吗？')) {
+                    RecordManager.records = RecordManager.records.filter(r => r.id !== recordId);
+                    Storage.saveRecords(RecordManager.records);
+                    this.renderRecords();
+                    Toast.show('记录已删除');
+                }
             },
             importData() {
                 const file = this.fileInput.files[0];
@@ -374,6 +456,10 @@
                         // Refresh stats if on stats tab
                         if (document.getElementById('stats-tab').classList.contains('tab-active')) {
                             Stats.update();
+                        }
+                        // Refresh records table if on data tab
+                        if (document.getElementById('data-tab').classList.contains('tab-active')) {
+                            this.renderRecords();
                         }
                     } catch (error) {
                         Toast.show('导入失败，请检查文件格式');
@@ -528,6 +614,11 @@
                         this.modal.hide();
                     }
                 });
+
+                // Initial render if on data tab
+                if (document.getElementById('data-tab').classList.contains('tab-active')) {
+                    DataManager.renderRecords();
+                }
             },
             handleRecordClick() {
                 const now = new Date();
