@@ -1,0 +1,79 @@
+<html lang="zh-CN"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>事件记录器</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+</head>
+<body>
+  <!-- 年终报告提示条 -->
+  <div id="annual-report-tip" class="tip-bar">
+    <span>🎊 年终总结季！点击生成你的年度时间记录报告 →</span>
+    <a href="pages/annual-report.html">生成报告</a>
+  </div>
+
+  <div class="container">
+    <h1>事件记录与统计</h1>
+    
+    <!-- 导航栏 -->
+    <div class="nav">
+      <div class="tab active" data-tab="record">记录</div>
+      <div class="tab" data-tab="statistic">统计</div>
+      <div class="tab" data-tab="data-manage">数据管理</div>
+    </div>
+
+    <!-- 记录功能区 -->
+    <div class="content-section active" id="record-section">
+      <div class="record-container">
+        <button id="record-btn" class="record-button">记录此刻</button>
+        <input type="text" id="remark-input" placeholder="添加备注（可选）">
+        <div class="last-record">上次记录：<span id="last-record-time">暂无记录</span></div>
+      </div>
+    </div>
+
+    <!-- 统计功能区 -->
+    <div class="content-section" id="statistic-section">
+      <div class="statistic-container">
+        <div class="chart-container">
+          <div id="statistic-chart" style="height: 400px;"></div>
+        </div>
+        <div class="statistic-summary">
+          <div class="summary-item">
+            <span class="summary-label">总记录数：</span>
+            <a href="pages/year-data.html" class="summary-value year-data-link" id="total-records">0</a>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">本月记录：</span>
+            <a href="pages/month-data.html" class="summary-value year-data-link" id="month-records">0</a>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">本周记录：</span>
+            <a href="pages/week-data.html" class="summary-value year-data-link" id="week-records">0</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数据管理功能区 -->
+    <div class="content-section" id="data-manage-section">
+      <div class="data-manage-container">
+        <div class="data-actions">
+          <button id="export-btn" class="action-btn">导出数据</button>
+          <input type="file" id="import-file" accept=".json" style="display: none;">
+          <button id="import-btn" class="action-btn">导入数据</button>
+          <button id="clear-btn" class="action-btn danger">清空数据</button>
+          <div class="last-backup-time" id="last-backup-time">上次备份：--</div>
+        </div>
+        <div class="data-list">
+          <h3>记录列表</h3>
+          <div id="records-list" class="records-container">
+            <!-- 记录列表将在这里动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+
+</body></html>
