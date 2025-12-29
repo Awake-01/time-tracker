@@ -6,6 +6,7 @@
     <title>时间记录与统计</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.544.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
     <style>
         :root {
             --primary-color: #4F46E5;
@@ -112,6 +113,10 @@
     </style>
 </head>
 <body class="antialiased">
+    <div id="annual-report-tip" class="tip-bar">
+        <span>🎊 年终总结季！点击生成你的2024年度时间记录报告 →</span>
+        <a href="annual-report.html">生成报告</a>
+    </div>
     <div id="app" class="min-h-screen flex flex-col">
         <header class="p-4 flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm fixed top-0 left-0 right-0 z-10">
             <h1 class="text-2xl font-bold text-gray-800 dark:text-white">时间记录器</h1>
