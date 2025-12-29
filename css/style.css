@@ -1,0 +1,66 @@
+/* 新增：年终报告提示条样式 */
+.tip-bar {
+  display: none; /* 默认隐藏 */
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 16px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+.tip-bar a {
+  color: white;
+  text-decoration: underline;
+  margin-left: 10px;
+}
+.tip-bar:hover {
+  opacity: 0.9;
+}
+
+/* 新增：年终报告页面样式 */
+.annual-report {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.report-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+.report-tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #666;
+}
+.report-tab.active {
+  color: #667eea;
+  border-bottom: 2px solid #667eea;
+}
+.report-content {
+  display: none;
+}
+.report-content.active {
+  display: block;
+}
+.chart-box {
+  height: 400px;
+  margin-bottom: 30px;
+}
+.data-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.data-card h3 {
+  margin-top: 0;
+  color: #333;
+}
+.data-item {
+  margin: 10px 0;
+  font-size: 16px;
+}
