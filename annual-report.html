@@ -3,13 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <title>年度时间记录报告</title>
-  <!-- 引入原有样式（保证风格统一）+ ECharts（图表依赖） -->
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
 <body>
   <div class="annual-report">
-    <h1>2024年度时间记录报告</h1>
+    <!-- 新增：年份选择器 + 动态标题 -->
+    <div class="year-selector">
+      <label>选择年份：</label>
+      <select id="year-select">
+        <!-- 选项会通过JS动态生成 -->
+      </select>
+    </div>
+    <h1 id="report-title">年度时间记录报告</h1>
     
     <!-- 报告分页标签 -->
     <div class="report-tabs">
@@ -22,7 +28,7 @@
     <div class="report-content active" id="monthly-stat">
       <div class="chart-box" id="monthly-chart"></div>
       <div class="data-card">
-        <h3>2024年度数据汇总</h3>
+        <h3>年度数据汇总</h3>
         <div class="data-item">年度总记录数：<span id="total-count">0</span> 次</div>
         <h3>各月度记录数</h3>
         <div id="monthly-data-list" class="data-item"></div>
