@@ -64,3 +64,21 @@
   margin: 10px 0;
   font-size: 16px;
 }
+
+/* 新增：年份选择器样式 */
+.year-selector {
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+.year-selector select {
+  padding: 6px 10px;
+  margin-left: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.year-selector select:focus {
+  outline: none;
+  border-color: #667eea;
+}
