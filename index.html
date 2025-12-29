@@ -1,714 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>时间记录与统计</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.544.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
-    <style>
-        :root {
-            --primary-color: #4F46E5;
-            --secondary-color: #EC4899;
-            --background-color: #F3F4F6;
-            --card-background: #FFFFFF;
-            --text-color: #1F2937;
-            --text-light: #6B7280;
-        }
-        html.dark {
-            --primary-color: #6366F1;
-            --secondary-color: #F472B6;
-            --background-color: #111827;
-            --card-background: #1F2937;
-            --text-color: #F9FAFB;
-            --text-light: #9CA3AF;
-        }
-        body {
-            background-color: var(--background-color);
-            color: var(--text-color);
-            font-family: 'Inter', sans-serif;
-        }
-        .card {
-            background-color: var(--card-background);
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            transition: background-color 0.3s ease, transform 0.1s ease;
-        }
-        .btn:hover {
-            background-color: #4338CA;
-        }
-        .btn:active {
-            transform: scale(0.98);
-        }
-        .tab-active {
-            border-bottom-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-        }
-        .modal-content {
-            animation: modalFadeIn 0.3s ease-out;
-        }
-        @keyframes modalFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-        .tree-node {
-            cursor: pointer;
-            user-select: none;
-        }
-        .tree-node-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-        .tree-node-content:hover {
-            background-color: rgba(79, 70, 229, 0.1);
-        }
-        .tree-children {
-            margin-left: 24px;
-            overflow: hidden;
-            max-height: 1000px; /* A large enough value to accommodate all children */
-            transition: max-height 0.3s ease-in-out;
-        }
-        .tree-children.collapsed {
-            max-height: 0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时间记录器</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
-<body class="antialiased">
-    <div id="annual-report-tip" class="tip-bar">
-        <span>🎊 年终总结季！点击生成你的2024年度时间记录报告 →</span>
-        <a href="annual-report.html">生成报告</a>
+<body>
+  <!-- 年终报告提示条 -->
+  <div id="annual-report-tip" class="tip-bar">
+    <span>🎊 年终总结季！点击生成你的年度时间记录报告 →</span>
+    <a href="annual-report.html">生成报告</a>
+  </div>
+
+  <div class="container">
+    <h1>时间记录器</h1>
+    
+    <!-- 导航栏 -->
+    <div class="nav">
+      <div class="tab active" data-tab="record">记录</div>
+      <div class="tab" data-tab="statistic">统计</div>
+      <div class="tab" data-tab="data-manage">数据管理</div>
     </div>
-    <div id="app" class="min-h-screen flex flex-col">
-        <header class="p-4 flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm fixed top-0 left-0 right-0 z-10">
-            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">时间记录器</h1>
-            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                <i data-lucide="sun" class="block dark:hidden"></i>
-                <i data-lucide="moon" class="hidden dark:block"></i>
-            </button>
-        </header>
 
-        <main class="flex-grow pt-24 pb-16 px-4 md:px-8 lg:px-16 max-w-7xl mx-auto w-full">
-            <div class="mb-8">
-                <nav class="border-b border-gray-200 dark:border-gray-700">
-                    <ul class="-mb-px flex space-x-8" id="tabs" role="tablist">
-                        <li class="mr-2" role="presentation">
-                            <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg tab-active" id="record-tab" data-tab="record" type="button" role="tab" aria-controls="record" aria-selected="true">
-                                <i data-lucide="plus-circle" class="inline-block w-5 h-5 mr-2"></i>记录
-                            </button>
-                        </li>
-                        <li class="mr-2" role="presentation">
-                            <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 dark:hover:text-gray-300" id="stats-tab" data-tab="stats" type="button" role="tab" aria-controls="stats" aria-selected="false">
-                                <i data-lucide="bar-chart-3" class="inline-block w-5 h-5 mr-2"></i>统计
-                            </button>
-                        </li>
-                         <li class="mr-2" role="presentation">
-                            <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 dark:hover:text-gray-300" id="data-tab" data-tab="data" type="button" role="tab" aria-controls="data" aria-selected="false">
-                                <i data-lucide="database" class="inline-block w-5 h-5 mr-2"></i>数据管理
-                            </button>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
+    <!-- 记录功能区 -->
+    <div class="content-section active" id="record-section">
+      <div class="record-container">
+        <button id="record-btn" class="record-button">记录此刻</button>
+        <input type="text" id="remark-input" placeholder="添加备注（可选）">
+        <div class="last-record">上次记录：<span id="last-record-time">暂无记录</span></div>
+      </div>
+    </div>
 
-            <div id="tab-contents">
-                <div id="record" class="tab-content">
-                    <div class="flex items-center justify-center h-96">
-                        <button id="record-btn" class="btn text-2xl py-6 px-12 rounded-full font-semibold flex items-center gap-4">
-                            <i data-lucide="clock" class="w-8 h-8"></i>
-                            记录此刻
-                        </button>
-                    </div>
-                </div>
-
-                <div id="stats" class="tab-content hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div class="md:col-span-1">
-                            <div class="card p-6">
-                                <h2 class="text-xl font-semibold mb-4">时间维度</h2>
-                                <select id="dimension-select" class="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
-                                    <option value="year">按年</option>
-                                    <option value="month">按月</option>
-                                    <option value="week">按星期</option>
-                                    <option value="day">按日</option>
-                                </select>
-                                <div id="stats-summary" class="mt-6">
-                                    <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300">总记录数</h3>
-                                    <p id="total-count" class="text-4xl font-bold text-primary-color mt-2">0</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="md:col-span-2">
-                            <div class="card p-6 h-full">
-                                <h2 class="text-xl font-semibold mb-4">记录分布</h2>
-                                <div id="tree-view" class="tree-view"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="data" class="tab-content hidden">
-                    <div class="card p-6">
-                        <h2 class="text-xl font-semibold mb-4">数据管理</h2>
-                        <div class="mb-4">
-                            <label for="file-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">选择 JSON 文件</label>
-                            <input type="file" id="file-input" accept=".json" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-color file:text-white hover:file:bg-indigo-700">
-                        </div>
-                        <button id="import-btn" class="btn px-4 py-2 rounded">从文件导入数据</button>
-                        <button id="export-btn" class="btn px-4 py-2 rounded ml-4">导出数据到文件</button>
-                    </div>
-                    
-                    <div class="card p-6 mt-6">
-                        <h2 class="text-xl font-semibold mb-4">本地记录</h2>
-                        <div class="overflow-x-auto">
-                            <table id="records-table" class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3">时间</th>
-                                        <th scope="col" class="px-6 py-3">备注</th>
-                                        <th scope="col" class="px-6 py-3">管理</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="records-table-body">
-                                    <!-- Records will be dynamically inserted here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Modal -->
-        <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
-            <div class="modal-content bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
-                <h2 class="text-2xl font-bold mb-4">添加备注</h2>
-                <p id="current-time" class="text-gray-600 dark:text-gray-400 mb-4"></p>
-                <textarea id="note-input" class="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" rows="3" placeholder="输入备注..."></textarea>
-                <div class="mt-6 flex justify-end gap-4">
-                    <button id="skip-btn" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">跳过</button>
-                    <button id="confirm-btn" class="btn px-4 py-2 rounded">确认</button>
-                </div>
-            </div>
+    <!-- 统计功能区 -->
+    <div class="content-section" id="statistic-section">
+      <div class="statistic-container">
+        <div class="chart-container">
+          <div id="statistic-chart" style="height: 400px;"></div>
         </div>
-        
-        <div id="toast" class="toast"></div>
+        <div class="statistic-summary">
+          <div class="summary-item">
+            <span class="summary-label">总记录数：</span>
+            <span class="summary-value" id="total-records">0</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">本月记录：</span>
+            <span class="summary-value" id="month-records">0</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">本周记录：</span>
+            <span class="summary-value" id="week-records">0</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-        lucide.createIcons();
+    <!-- 数据管理功能区 -->
+    <div class="content-section" id="data-manage-section">
+      <div class="data-manage-container">
+        <div class="data-actions">
+          <button id="export-btn" class="action-btn">导出数据</button>
+          <input type="file" id="import-file" accept=".json" style="display: none;">
+          <button id="import-btn" class="action-btn">导入数据</button>
+          <button id="clear-btn" class="action-btn danger">清空数据</button>
+        </div>
+        <div class="data-list">
+          <h3>记录列表</h3>
+          <div id="records-list" class="records-container">
+            <!-- 记录列表将在这里动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        const Theme = {
-            init() {
-                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
-            },
-            toggle() {
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.theme = 'light';
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.theme = 'dark';
-                }
-            }
-        };
-
-        const Storage = {
-            getRecords() {
-                return JSON.parse(localStorage.getItem('time-records') || '[]');
-            },
-            saveRecords(records) {
-                localStorage.setItem('time-records', JSON.stringify(records));
-            }
-        };
-
-        const Toast = {
-            element: document.getElementById('toast'),
-            show(message, duration = 3000) {
-                this.element.textContent = message;
-                this.element.classList.add('show');
-                setTimeout(() => {
-                    this.element.classList.remove('show');
-                }, duration);
-            }
-        };
-
-        const Modal = {
-            element: document.getElementById('modal'),
-            currentTimeElement: document.getElementById('current-time'),
-            noteInput: document.getElementById('note-input'),
-            
-            show(currentTime) {
-                this.currentTimeElement.textContent = currentTime;
-                this.element.classList.remove('hidden');
-                this.element.classList.add('flex');
-                this.noteInput.focus();
-            },
-            hide() {
-                this.element.classList.add('hidden');
-                this.element.classList.remove('flex');
-                this.noteInput.value = ''; // Clear input for next time
-            }
-        };
-
-        const TabManager = {
-            tabs: document.querySelectorAll('#tabs button'),
-            tabContents: document.querySelectorAll('.tab-content'),
-
-            init() {
-                this.tabs.forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        this.switchTo(tab.dataset.tab);
-                    });
-                });
-            },
-            switchTo(tabName) {
-                this.tabs.forEach(tab => {
-                    if (tab.dataset.tab === tabName) {
-                        tab.classList.add('tab-active');
-                        tab.setAttribute('aria-selected', 'true');
-                    } else {
-                        tab.classList.remove('tab-active');
-                        tab.setAttribute('aria-selected', 'false');
-                    }
-                });
-
-                this.tabContents.forEach(content => {
-                    if (content.id === tabName) {
-                        content.classList.remove('hidden');
-                    } else {
-                        content.classList.add('hidden');
-                    }
-                });
-                
-                // If switching to stats, update the view
-                if (tabName === 'stats') {
-                    Stats.update();
-                }
-            }
-        };
-
-        const RecordManager = {
-            records: Storage.getRecords(),
-
-            addRecord(note = '') {
-                const now = new Date();
-                const record = {
-                    id: Date.now().toString(),
-                    timestamp: now.toISOString(),
-                    note: note
-                };
-                this.records.push(record);
-                Storage.saveRecords(this.records);
-                Toast.show('记录已保存');
-                return record;
-            },
-            getRecords() {
-                return this.records;
-            },
-            refreshRecords() {
-                this.records = Storage.getRecords();
-            }
-        };
-
-        const DataManager = {
-            importBtn: document.getElementById('import-btn'),
-            exportBtn: document.getElementById('export-btn'),
-            fileInput: document.getElementById('file-input'),
-            recordsTableBody: document.getElementById('records-table-body'),
-
-            init() {
-                this.importBtn.addEventListener('click', () => this.importData());
-                this.exportBtn.addEventListener('click', () => this.exportData());
-                TabManager.tabs.forEach(tab => {
-                    if (tab.dataset.tab === 'data') {
-                        tab.addEventListener('click', () => this.renderRecords());
-                    }
-                });
-            },
-            renderRecords() {
-                this.recordsTableBody.innerHTML = '';
-                const records = RecordManager.getRecords().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort by newest first
-
-                records.forEach(record => {
-                    const row = document.createElement('tr');
-                    row.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700';
-
-                    const date = new Date(record.timestamp);
-                    const formattedDate = date.toLocaleString('zh-CN', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    });
-
-                    row.innerHTML = `
-                        <td class="px-6 py-4">${formattedDate}</td>
-                        <td class="px-6 py-4">${record.note || '-'}</td>
-                        <td class="px-6 py-4">
-                            <button class="edit-btn text-blue-600 hover:text-blue-900 mr-4" data-id="${record.id}">编辑</button>
-                            <button class="delete-btn text-red-600 hover:text-red-900" data-id="${record.id}">删除</button>
-                        </td>
-                    `;
-
-                    this.recordsTableBody.appendChild(row);
-                });
-
-                // Add event listeners for new buttons
-                document.querySelectorAll('.edit-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => this.editRecord(e.target.dataset.id));
-                });
-                document.querySelectorAll('.delete-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => this.deleteRecord(e.target.dataset.id));
-                });
-            },
-            editRecord(recordId) {
-                const record = RecordManager.records.find(r => r.id === recordId);
-                if (!record) return;
-
-                const newNote = prompt('请输入新的备注:', record.note);
-                if (newNote !== null) { // User clicked OK, not Cancel
-                    record.note = newNote.trim();
-                    Storage.saveRecords(RecordManager.records);
-                    this.renderRecords();
-                    Toast.show('记录已更新');
-                }
-            },
-            deleteRecord(recordId) {
-                if (confirm('确定要删除这条记录吗？')) {
-                    RecordManager.records = RecordManager.records.filter(r => r.id !== recordId);
-                    Storage.saveRecords(RecordManager.records);
-                    this.renderRecords();
-                    Toast.show('记录已删除');
-                }
-            },
-            importData() {
-                const file = this.fileInput.files[0];
-                if (!file) {
-                    Toast.show('请选择一个文件');
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const importedRecords = JSON.parse(e.target.result);
-                        if (!Array.isArray(importedRecords)) {
-                            throw new Error('Invalid data format');
-                        }
-                        
-                        const currentRecords = RecordManager.getRecords();
-                        const mergedRecords = [...currentRecords, ...importedRecords];
-                        
-                        // Deduplicate based on ID
-                        const uniqueRecords = mergedRecords.reduce((acc, record) => {
-                            const existingRecord = acc.find(r => r.id === record.id);
-                            if (!existingRecord) {
-                                acc.push(record);
-                            }
-                            return acc;
-                        }, []);
-
-                        RecordManager.records = uniqueRecords;
-                        Storage.saveRecords(uniqueRecords);
-                        
-                        Toast.show(`成功导入 ${importedRecords.length} 条记录`);
-                        
-                        // Refresh stats if on stats tab
-                        if (document.getElementById('stats-tab').classList.contains('tab-active')) {
-                            Stats.update();
-                        }
-                        // Refresh records table if on data tab
-                        if (document.getElementById('data-tab').classList.contains('tab-active')) {
-                            this.renderRecords();
-                        }
-                    } catch (error) {
-                        Toast.show('导入失败，请检查文件格式');
-                        console.error('Import error:', error);
-                    }
-                };
-                reader.readAsText(file);
-                 this.fileInput.value = ''; // Clear the input
-            },
-            exportData() {
-                const records = RecordManager.getRecords();
-                const dataStr = JSON.stringify(records, null, 2);
-                const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
-                
-                const exportFileDefaultName = `time-records-${new Date().toISOString().split('T')[0]}.json`;
-                
-                const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', dataUri);
-                linkElement.setAttribute('download', exportFileDefaultName);
-                linkElement.click();
-            }
-        };
-
-        const Stats = {
-            dimensionSelect: document.getElementById('dimension-select'),
-            totalCountElement: document.getElementById('total-count'),
-            treeViewElement: document.getElementById('tree-view'),
-
-            init() {
-                this.dimensionSelect.addEventListener('change', () => this.update());
-            },
-            update() {
-                RecordManager.refreshRecords();
-                const records = RecordManager.getRecords();
-                this.totalCountElement.textContent = records.length;
-                
-                const dimension = this.dimensionSelect.value;
-                const groupedData = this.groupByDimension(records, dimension);
-                this.renderTree(groupedData, dimension);
-            },
-            groupByDimension(records, dimension) {
-                const groups = {};
-
-                records.forEach(record => {
-                    const date = new Date(record.timestamp);
-                    let key;
-
-                    switch (dimension) {
-                        case 'year':
-                            key = date.getFullYear().toString();
-                            break;
-                        case 'month':
-                            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                            break;
-                        case 'week':
-                            const weekNumber = this.getWeekNumber(date);
-                            key = `${date.getFullYear()}-W${weekNumber}`;
-                            break;
-                        case 'day':
-                            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                            break;
-                    }
-
-                    if (!groups[key]) {
-                        groups[key] = [];
-                    }
-                    groups[key].push(record);
-                });
-
-                // Sort keys
-                return Object.keys(groups).sort().reduce((obj, key) => {
-                    obj[key] = groups[key];
-                    return obj;
-                }, {});
-            },
-            getWeekNumber(date) {
-                const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-                const dayNum = d.getUTCDay() || 7;
-                d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-                const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-                return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-            },
-            renderTree(data, dimension) {
-                this.treeViewElement.innerHTML = '';
-                const root = document.createElement('div');
-                root.className = 'tree-root';
-
-                Object.entries(data).forEach(([key, records]) => {
-                    const node = this.createTreeNode(key, records.length, dimension);
-                    root.appendChild(node);
-                });
-
-                this.treeViewElement.appendChild(root);
-            },
-            createTreeNode(key, count, dimension) {
-                const nodeElement = document.createElement('div');
-                nodeElement.className = 'tree-node';
-
-                let label = key;
-                switch (dimension) {
-                    case 'year':
-                        label = `${key}年`;
-                        break;
-                    case 'month':
-                        const [year, month] = key.split('-');
-                        label = `${year}年${month}月`;
-                        break;
-                    case 'week':
-                        label = `${key}`;
-                        break;
-                    case 'day':
-                        const [y, m, d] = key.split('-');
-                        label = `${y}年${m}月${d}日`;
-                        break;
-                }
-
-                const contentElement = document.createElement('div');
-                contentElement.className = 'tree-node-content';
-                contentElement.innerHTML = `
-                    <i data-lucide="chevron-right" class="w-4 h-4 transition-transform"></i>
-                    <span>${label}</span>
-                    <span class="ml-auto bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">${count}</span>
-                `;
-
-                nodeElement.appendChild(contentElement);
-                lucide.createIcons();
-                return nodeElement;
-            }
-        };
-
-        const BackupReminder = {
-            REMINDER_INTERVAL_DAYS: 30,
-
-            check() {
-                const lastBackup = localStorage.getItem('last-backup-date');
-                const now = new Date();
-
-                if (!lastBackup) {
-                    // First time using the app
-                    this.setLastBackupDate();
-                    return;
-                }
-
-                const lastBackupDate = new Date(lastBackup);
-                const diffTime = Math.abs(now - lastBackupDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays >= this.REMINDER_INTERVAL_DAYS) {
-                    this.showReminder();
-                }
-            },
-            showReminder() {
-                const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 z-50 flex items-center justify-center modal-backdrop';
-                modal.innerHTML = `
-                    <div class="modal-content bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4">
-                        <h2 class="text-2xl font-bold mb-4">备份提醒</h2>
-                        <p class="mb-4">距离您上次备份数据已经超过 30 天了，为了防止数据丢失，建议您立即备份。</p>
-                        <div class="mt-6 flex justify-end gap-4">
-                            <button id="remind-later-btn" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">稍后提醒</button>
-                            <button id="backup-now-btn" class="btn px-4 py-2 rounded">立即备份</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(modal);
-
-                document.getElementById('remind-later-btn').addEventListener('click', () => {
-                    document.body.removeChild(modal);
-                });
-
-                document.getElementById('backup-now-btn').addEventListener('click', () => {
-                    document.body.removeChild(modal);
-                    DataManager.exportData();
-                    this.setLastBackupDate();
-                });
-            },
-            setLastBackupDate() {
-                localStorage.setItem('last-backup-date', new Date().toISOString());
-            }
-        };
-
-        const App = {
-            recordBtn: document.getElementById('record-btn'),
-            modal: Modal,
-            skipBtn: document.getElementById('skip-btn'),
-            confirmBtn: document.getElementById('confirm-btn'),
-            themeToggleBtn: document.getElementById('theme-toggle'),
-
-            init() {
-                Theme.init();
-                TabManager.init();
-                Stats.init();
-                DataManager.init();
-                BackupReminder.check();
-
-                this.recordBtn.addEventListener('click', () => this.handleRecordClick());
-                this.skipBtn.addEventListener('click', () => this.handleSkip());
-                this.confirmBtn.addEventListener('click', () => this.handleConfirm());
-                this.themeToggleBtn.addEventListener('click', () => Theme.toggle());
-                
-                // Close modal on outside click
-                window.addEventListener('click', (e) => {
-                    if (e.target === this.modal.element) {
-                        this.modal.hide();
-                    }
-                });
-
-                // Initial render if on data tab
-                if (document.getElementById('data-tab').classList.contains('tab-active')) {
-                    DataManager.renderRecords();
-                }
-            },
-            handleRecordClick() {
-                const now = new Date();
-                const formattedTime = now.toLocaleString('zh-CN', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-                this.modal.show(formattedTime);
-            },
-            handleSkip() {
-                RecordManager.addRecord();
-                this.modal.hide();
-                // If on stats tab, refresh
-                if (TabManager.tabs[1].classList.contains('tab-active')) {
-                    Stats.update();
-                }
-            },
-            handleConfirm() {
-                const note = this.modal.noteInput.value.trim();
-                RecordManager.addRecord(note);
-                this.modal.hide();
-                // If on stats tab, refresh
-                if (TabManager.tabs[1].classList.contains('tab-active')) {
-                    Stats.update();
-                }
-            }
-        };
-
-        App.init();
-    </script>
+  <script src="js/main.js"></script>
 </body>
 </html>
