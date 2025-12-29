@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>周数据统计 - 事件记录器</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>周度记录数据统计</h1>
+      <a href="../index.html" class="back-link">← 返回主页</a>
+    </div>
+    
+    <div class="filter-container">
+      <label for="year-month-filter">选择年月：</label>
+      <select id="year-month-filter" class="year-month-select">
+        <!-- 年月选项将通过JS动态生成 -->
+      </select>
+    </div>
+    
+    <div class="week-stats-container">
+      <div class="chart-container">
+        <div id="weekly-chart" style="height: 500px;"></div>
+      </div>
+      <div class="week-summary">
+        <div class="summary-item">
+          <span class="summary-label">总记录数：</span>
+          <span class="summary-value" id="total-week-records">0</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">最高记录周：</span>
+          <span class="summary-value" id="max-week">--</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">平均每周记录：</span>
+          <span class="summary-value" id="avg-week-records">0</span>
+        </div>
+        
+        <!-- 时间段统计 -->
+        <div class="time-periods-container">
+          <div class="time-periods-grid">
+            <div class="time-period-item">
+              <div class="period-label">上午<br>6:00-12:00</div>
+              <div class="period-value" id="morning-count">0</div>
+            </div>
+            <div class="time-period-item">
+              <div class="period-label">下午<br>12:00-18:00</div>
+              <div class="period-value" id="afternoon-count">0</div>
+            </div>
+            <div class="time-period-item">
+              <div class="period-label">夜晚<br>18:00-24:00</div>
+              <div class="period-value" id="night-count">0</div>
+            </div>
+            <div class="time-period-item">
+              <div class="period-label">凌晨<br>0:00-6:00</div>
+              <div class="period-value" id="dawn-count">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 周度数据统计功能
+    (function() {
+      let currentYear = new Date().getFullYear();
+      let currentMonth = new Date().getMonth(); // 0-11
+      let allRecords = [];
+
+      // 获取所有记录数据
+      function getAllRecordData() {
+        try {
+          const records = JSON.parse(localStorage.getItem('timeRecords')) || [];
+          return records.filter(record => 
+            record.time && record.timestamp && typeof record.timestamp === 'number'
+          );
+        } catch (error) {
+          console.error('读取记录数据失败:', error);
+          return [];
+        }
+      }
+
+      // 生成年月选项
+      function generateYearMonthOptions() {
+        const yearMonthSelect = document.getElementById('year-month-filter');
+        if (!yearMonthSelect) return;
+
+        // 提取所有不重复的年月
+        const yearMonthSet = new Set();
+        allRecords.forEach(record => {
+          const recordDate = new Date(record.timestamp);
+          const yearMonth = `${recordDate.getFullYear()}-${recordDate.getMonth()}`;
+          yearMonthSet.add(yearMonth);
+        });
+
+        const yearMonthList = Array.from(yearMonthSet)
+          .map(ym => {
+            const [year, month] = ym.split('-').map(Number);
+            return { year, month };
+          })
+          .sort((a, b) => {
+            if (a.year !== b.year) return b.year - a.year;
+            return b.month - a.month;
+          });
+
+        if (yearMonthList.length === 0) {
+          yearMonthSelect.innerHTML = '<option value="">暂无数据</option>';
+          yearMonthSelect.disabled = true;
+          return;
+        }
+
+        // 生成选项
+        const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+        yearMonthSelect.innerHTML = yearMonthList.map(ym => {
+          const isSelected = ym.year === currentYear && ym.month === currentMonth;
+          return `<option value="${ym.year}-${ym.month}" ${isSelected ? 'selected' : ''}>
+            ${ym.year}年${monthNames[ym.month]}
+          </option>`;
+        }).join('');
+
+        // 监听年月变化
+        yearMonthSelect.addEventListener('change', function() {
+          if (this.value) {
+            const [year, month] = this.value.split('-').map(Number);
+            currentYear = year;
+            currentMonth = month;
+            renderAllData();
+          }
+        });
+      }
+
+      // 获取指定日期所在周的周一日期
+      function getWeekStart(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 调整为周一为一周的开始
+        return new Date(d.setDate(diff));
+      }
+
+      // 计算周数据
+      function calculateWeeklyData(records, year, month) {
+        const weekMap = new Map();
+        let totalRecords = 0;
+        const timePeriods = {
+          morning: 0,
+          afternoon: 0,
+          night: 0,
+          dawn: 0
+        };
+
+        // 获取指定月份的开始和结束日期
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+
+        records.forEach(record => {
+          const recordDate = new Date(record.timestamp);
+          if (recordDate.getFullYear() === year && recordDate.getMonth() === month) {
+            const weekStart = getWeekStart(recordDate);
+            const weekKey = weekStart.toISOString().split('T')[0];
+            const hour = recordDate.getHours();
+            
+            weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + 1);
+            totalRecords++;
+            
+            // 统计时间段
+            if (hour >= 6 && hour < 12) {
+              timePeriods.morning++;
+            } else if (hour >= 12 && hour < 18) {
+              timePeriods.afternoon++;
+            } else if (hour >= 18 && hour < 24) {
+              timePeriods.night++;
+            } else {
+              timePeriods.dawn++;
+            }
+          }
+        });
+
+        // 转换为数组并排序
+        const weekData = Array.from(weekMap.entries())
+          .map(([weekStart, count]) => ({
+            weekStart: new Date(weekStart),
+            count
+          }))
+          .sort((a, b) => a.weekStart - b.weekStart);
+
+        // 找出最大值
+        const maxWeek = weekData.length > 0 ? 
+          weekData.reduce((max, current) => current.count > max.count ? current : max) : null;
+
+        return {
+          weekData: weekData,
+          totalRecords: totalRecords,
+          maxWeek: maxWeek,
+          timePeriods: timePeriods
+        };
+      }
+
+      // 渲染周度图表
+      function renderWeeklyChart(weekData) {
+        const chartDom = document.getElementById('weekly-chart');
+        if (!chartDom) return;
+
+        const myChart = echarts.init(chartDom);
+
+        const weekLabels = weekData.map(item => {
+          const month = item.weekStart.getMonth() + 1;
+          const day = item.weekStart.getDate();
+          return `${month}/${day}开始`;
+        });
+
+        const counts = weekData.map(item => item.count);
+
+        const option = {
+          title: {
+            text: `${currentYear}年${currentMonth + 1}月周度记录数量统计`,
+            left: 'center'
+          },
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'shadow'
+            },
+            formatter: function(params) {
+              const data = params[0];
+              const weekInfo = weekData[data.dataIndex];
+              const endDay = new Date(weekInfo.weekStart);
+              endDay.setDate(endDay.getDate() + 6);
+              return `${weekInfo.weekStart.getMonth() + 1}/${weekInfo.weekStart.getDate()} - ${endDay.getMonth() + 1}/${endDay.getDate()}<br/>记录数：${data.value} 次`;
+            }
+          },
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+          },
+          xAxis: {
+            type: 'category',
+            data: weekLabels,
+            axisLabel: {
+              interval: 0,
+              rotate: 45
+            }
+          },
+          yAxis: {
+            type: 'value',
+            minInterval: 1,
+            name: '记录数'
+          },
+          series: [
+            {
+              name: '记录数',
+              type: 'bar',
+              data: counts,
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#667eea' },
+                  { offset: 1, color: '#764ba2' }
+                ])
+              },
+              emphasis: {
+                itemStyle: {
+                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#5a6fd8' },
+                    { offset: 1, color: '#6a4190' }
+                  ])
+                }
+              },
+              label: {
+                show: true,
+                position: 'top',
+                formatter: '{c} 次'
+              }
+            }
+          ]
+        };
+
+        myChart.setOption(option);
+
+        // 响应式调整
+        window.addEventListener('resize', () => {
+          myChart.resize();
+        });
+
+        // 延迟触发resize确保图表正确显示
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 100);
+      }
+
+      // 更新统计摘要
+      function updateSummary(weeklyStats) {
+        document.getElementById('total-week-records').textContent = weeklyStats.totalRecords;
+        
+        if (weeklyStats.maxWeek) {
+          const endDay = new Date(weeklyStats.maxWeek.weekStart);
+          endDay.setDate(endDay.getDate() + 6);
+          document.getElementById('max-week').textContent = 
+            `${weeklyStats.maxWeek.weekStart.getMonth() + 1}/${weeklyStats.maxWeek.weekStart.getDate()} - ${endDay.getMonth() + 1}/${endDay.getDate()}（${weeklyStats.maxWeek.count} 次）`;
+        } else {
+          document.getElementById('max-week').textContent = '--';
+        }
+
+        const avgRecords = weeklyStats.weekData.length > 0 ? 
+          Math.round(weeklyStats.totalRecords / weeklyStats.weekData.length) : 0;
+        document.getElementById('avg-week-records').textContent = avgRecords + ' 次';
+      }
+
+      // 更新时间段统计
+      function updateTimePeriods(timePeriods) {
+        document.getElementById('morning-count').textContent = timePeriods.morning || 0;
+        document.getElementById('afternoon-count').textContent = timePeriods.afternoon || 0;
+        document.getElementById('night-count').textContent = timePeriods.night || 0;
+        document.getElementById('dawn-count').textContent = timePeriods.dawn || 0;
+      }
+
+      // 渲染所有数据
+      function renderAllData() {
+        const weeklyStats = calculateWeeklyData(allRecords, currentYear, currentMonth);
+        
+        if (weeklyStats.totalRecords === 0) {
+          document.getElementById('weekly-chart').innerHTML = 
+            `<div style="text-align: center; padding: 100px; color: #666;">${currentYear}年${currentMonth + 1}月暂无数据</div>`;
+          
+          document.getElementById('total-week-records').textContent = '0';
+          document.getElementById('max-week').textContent = '--';
+          document.getElementById('avg-week-records').textContent = '0 次';
+          
+          return;
+        }
+
+        renderWeeklyChart(weeklyStats.weekData);
+        updateSummary(weeklyStats);
+        updateTimePeriods(weeklyStats.timePeriods);
+        updateTimePeriods(weeklyStats.timePeriods);
+      }
+
+      // 初始化页面
+      function init() {
+        allRecords = getAllRecordData();
+        generateYearMonthOptions();
+        renderAllData();
+      }
+
+      // 页面加载完成后初始化
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>历年数据统计 - 事件记录器</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>历年记录数据统计</h1>
+      <a href="../index.html" class="back-link">← 返回主页</a>
+    </div>
+    
+    <div class="year-stats-container">
+      <div class="chart-container">
+        <div id="yearly-chart" style="height: 500px;"></div>
+      </div>
+      <div class="year-summary">
+        <div class="summary-item">
+          <span class="summary-label">总年份数：</span>
+          <span class="summary-value" id="total-years">0</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">最高记录年份：</span>
+          <span class="summary-value" id="max-year">--</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">平均每年记录：</span>
+          <span class="summary-value" id="avg-records">0</span>
+        </div>
+        
+        <!-- 时间段统计 -->
+        <div class="time-periods-container">
+          <div class="time-periods-grid">
+            <div class="time-period-item">
+              <div class="period-label">上午<br>6:00-12:00</div>
+              <div class="period-value" id="morning-count">0</div>
+            </div>
+            <div class="time-period-item">
+              <div class="period-label">下午<br>12:00-18:00</div>
+              <div class="period-value" id="afternoon-count">0</div>
+            </div>
+            <div class="time-period-item">
+              <div class="period-label">夜晚<br>18:00-24:00</div>
+              <div class="period-value" id="night-count">0</div>
+            </div>
+            <div class="time-period-item">
+              <div class="period-label">凌晨<br>0:00-6:00</div>
+              <div class="period-value" id="dawn-count">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 历年数据统计功能
+    (function() {
+      // 获取所有记录数据
+      function getAllRecordData() {
+        try {
+          const records = JSON.parse(localStorage.getItem('timeRecords')) || [];
+          return records.filter(record => 
+            record.time && record.timestamp && typeof record.timestamp === 'number'
+          );
+        } catch (error) {
+          console.error('读取记录数据失败:', error);
+          return [];
+        }
+      }
+
+      // 计算年度数据
+      function calculateYearlyData(records) {
+        const yearMap = {};
+        let totalRecords = 0;
+        const timePeriods = {
+          morning: 0,
+          afternoon: 0,
+          night: 0,
+          dawn: 0
+        };
+
+        records.forEach(record => {
+          const recordDate = new Date(record.timestamp);
+          const year = recordDate.getFullYear();
+          const hour = recordDate.getHours();
+          
+          yearMap[year] = (yearMap[year] || 0) + 1;
+          totalRecords++;
+          
+          // 统计时间段
+          if (hour >= 6 && hour < 12) {
+            timePeriods.morning++;
+          } else if (hour >= 12 && hour < 18) {
+            timePeriods.afternoon++;
+          } else if (hour >= 18 && hour < 24) {
+            timePeriods.night++;
+          } else {
+            timePeriods.dawn++;
+          }
+        });
+
+        // 转换为数组并排序
+        const yearData = Object.entries(yearMap)
+          .map(([year, count]) => ({ year: parseInt(year), count }))
+          .sort((a, b) => a.year - b.year);
+
+        return {
+          yearData: yearData,
+          totalYears: yearData.length,
+          totalRecords: totalRecords,
+          maxYear: yearData.length > 0 ? 
+            yearData.reduce((max, current) => current.count > max.count ? current : max) : null,
+          timePeriods: timePeriods
+        };
+      }
+
+      // 渲染年度图表
+      function renderYearlyChart(yearData) {
+        const chartDom = document.getElementById('yearly-chart');
+        if (!chartDom) return;
+
+        const myChart = echarts.init(chartDom);
+
+        const years = yearData.map(item => item.year + '年');
+        const counts = yearData.map(item => item.count);
+
+        const option = {
+          title: {
+            text: '历年记录数量统计',
+            left: 'center'
+          },
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'shadow'
+            },
+            formatter: function(params) {
+              const data = params[0];
+              return `${data.name}<br/>记录数：${data.value} 次`;
+            }
+          },
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+          },
+          xAxis: {
+            type: 'category',
+            data: years,
+            axisLabel: {
+              interval: 0
+            }
+          },
+          yAxis: {
+            type: 'value',
+            minInterval: 1,
+            name: '记录数'
+          },
+          series: [
+            {
+              name: '记录数',
+              type: 'bar',
+              data: counts,
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#667eea' },
+                  { offset: 1, color: '#764ba2' }
+                ])
+              },
+              emphasis: {
+                itemStyle: {
+                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#5a6fd8' },
+                    { offset: 1, color: '#6a4190' }
+                  ])
+                }
+              },
+              label: {
+                show: true,
+                position: 'top',
+                formatter: '{c} 次'
+              }
+            }
+          ]
+        };
+
+        myChart.setOption(option);
+
+        // 响应式调整
+        window.addEventListener('resize', () => {
+          myChart.resize();
+        });
+
+        // 延迟触发resize确保图表正确显示
+        setTimeout(() => {
+          window.dispatchEvent(new Event('resize'));
+        }, 100);
+      }
+
+      // 更新统计摘要
+      function updateSummary(yearlyStats) {
+        document.getElementById('total-years').textContent = yearlyStats.totalYears;
+        
+        if (yearlyStats.maxYear) {
+          document.getElementById('max-year').textContent = 
+            `${yearlyStats.maxYear.year}年（${yearlyStats.maxYear.count} 次）`;
+        } else {
+          document.getElementById('max-year').textContent = '--';
+        }
+
+        const avgRecords = yearlyStats.totalYears > 0 ? 
+          Math.round(yearlyStats.totalRecords / yearlyStats.totalYears) : 0;
+        document.getElementById('avg-records').textContent = avgRecords + ' 次';
+      }
+
+      // 更新时间段统计
+      function updateTimePeriods(timePeriods) {
+        document.getElementById('morning-count').textContent = timePeriods.morning || 0;
+        document.getElementById('afternoon-count').textContent = timePeriods.afternoon || 0;
+        document.getElementById('night-count').textContent = timePeriods.night || 0;
+        document.getElementById('dawn-count').textContent = timePeriods.dawn || 0;
+      }
+
+      // 初始化页面
+      function init() {
+        const records = getAllRecordData();
+        const yearlyStats = calculateYearlyData(records);
+        
+        if (yearlyStats.yearData.length === 0) {
+          document.getElementById('yearly-chart').innerHTML = 
+            '<div style="text-align: center; padding: 100px; color: #666;">暂无历年数据</div>';
+          return;
+        }
+
+        renderYearlyChart(yearlyStats.yearData);
+        updateSummary(yearlyStats);
+        updateTimePeriods(yearlyStats.timePeriods);
+      }
+
+      // 页面加载完成后初始化
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>
